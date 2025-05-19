@@ -20,23 +20,27 @@ authorized_admins = set()
 user_context = {}
 user_in_support = set()
 
-admin_password = "qwerty123"  # Пароль для авторизации
+admin_password = "20112007"  # Құпиясөз
 
 
 class ReplyState(StatesGroup):
     waiting_for_reply = State()
 
 
-# --- Кнопки ---
+class AdminLogin(StatesGroup):
+    пароль_күтуде = State()
+
+
+# --- Кнопкалар ---
 main_menu = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Дүкен", callback_data="shop")],
     [InlineKeyboardButton(text="Әлеуметтік желілер", callback_data="socials")],
-    [InlineKeyboardButton(text="Тех. Поддержка", callback_data="support")]
+    [InlineKeyboardButton(text="Тех. Қолдау", callback_data="support")]
 ])
 
 admin_panel = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Пользователи в поддержке", callback_data="show_support_users")],
-    [InlineKeyboardButton(text="Админдар тізімі", callback_data="list_admins")],
+    [InlineKeyboardButton(text="Қолдаудағы қолданушылар", callback_data="show_support_users")],
+    [InlineKeyboardButton(text="Әкімшілер тізімі", callback_data="list_admins")],
 ])
 
 
@@ -66,7 +70,7 @@ async def socials_handler(callback: CallbackQuery):
 @dp.callback_query(F.data == "support")
 async def support_handler(callback: CallbackQuery):
     user_in_support.add(callback.from_user.id)
-    await callback.message.answer("Сұрағыңызды жазыңыз. Барлығы админге жіберіледі.")
+    await callback.message.answer("Сұрағыңызды жазыңыз. Барлығы әкімшілерге жіберіледі.")
     await callback.answer()
 
 
@@ -78,7 +82,7 @@ async def handle_user_message(message: Message):
     if uid in banned_users:
         return
     if uid not in user_in_support:
-        return await message.answer("Сәлем! Алдымен 'Тех. Поддержка' батырмасын басыңыз.")
+        return await message.answer("Сәлем! Алдымен 'Тех. Қолдау' батырмасын басыңыз.")
 
     text = (
         f"<b>[ТЕХ. ҚОЛДАУ]</b>\n"
@@ -91,7 +95,7 @@ async def handle_user_message(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✉️ Жауап беру", callback_data=f"reply:{uid}")],
         [InlineKeyboardButton(
-            text=("❌ Админды шешу" if uid in admins else "✅ Админды сайлау"),
+            text=("❌ Әкімшіні алып тастау" if uid in admins else "✅ Әкімші ету"),
             callback_data=f"toggleadmin:{uid}")],
         [InlineKeyboardButton(
             text=("♻️ Разбан" if uid in banned_users else "⛔ Бан"),
@@ -125,7 +129,7 @@ async def send_reply(message: Message, state: FSMContext):
         return await state.clear()
 
     try:
-        await bot.send_message(target_id, f"<b>Админ:</b>\n\n{message.text}")
+        await bot.send_message(target_id, f"<b>Әкімші:</b>\n\n{message.text}")
         await message.answer("✅ Жіберілді.")
     except:
         await message.answer("❌ Жіберілмеді.")
@@ -141,14 +145,14 @@ async def toggle_admin(callback: CallbackQuery):
 
     uid = int(callback.data.split(":")[1])
     if uid == MAIN_ADMIN_ID:
-        return await callback.answer("Басты админді өзгертуге болмайды.")
+        return await callback.answer("Басты әкімшіні өзгертуге болмайды.")
 
     if uid in admins:
         admins.remove(uid)
-        await callback.message.answer(f"❌ {uid} админ емес.")
+        await callback.message.answer(f"❌ {uid} әкімші емес.")
     else:
         admins.add(uid)
-        await callback.message.answer(f"✅ {uid} енді админ.")
+        await callback.message.answer(f"✅ {uid} енді әкімші.")
     await callback.answer()
 
 
@@ -167,29 +171,29 @@ async def toggle_ban(callback: CallbackQuery):
     await callback.answer()
 
 
-# --- Авторизация через пароль ---
-@dp.message(Command("adminlogin"))
-async def login_admin(message: Message):
-    args = message.text.split()
-    if len(args) != 2:
-        return await message.answer("Қолданылуы: /adminlogin [пароль]")
+# --- /askin командасы: пароль сұрау арқылы әкімшілікке кіру ---
+@dp.message(Command("askin"))
+async def askin_start(message: Message, state: FSMContext):
+    await message.answer("Әкімшілікке кіру үшін құпиясөзді енгізіңіз:")
+    await state.set_state(AdminLogin.пароль_күтуде)
 
-    if message.from_user.id not in admins:
-        return await message.answer("Сіз жалпы админ емессіз.")
 
-    if args[1] == admin_password:
+@dp.message(AdminLogin.пароль_күтуде)
+async def process_password(message: Message, state: FSMContext):
+    if message.text == admin_password:
         authorized_admins.add(message.from_user.id)
-        await message.answer("✅ Тіркелу сәтті өтті. /admin теріңіз.")
+        admins.add(message.from_user.id)  # Админдер қатарына қосу
+        await message.answer("Құпиясөз дұрыс! Сіз әкімші ретінде тіркелдіңіз.")
     else:
-        await message.answer("❌ Пароль қате.")
+        await message.answer("Құпиясөз қате! Қайта көріңіз.")
+    await state.clear()
 
 
-# --- Админ-панель ---
 @dp.message(Command("admin"))
 async def admin_panel_handler(message: Message):
     if message.from_user.id not in authorized_admins:
-        return await message.answer("Сіз авторизациядан өтпегенсіз. /adminlogin [пароль] теріңіз.")
-    await message.answer("Админ панелі:", reply_markup=admin_panel)
+        return await message.answer("Сіз авторизациядан өтпегенсіз. /askin командасын қолданып, құпиясөзді енгізіңіз.")
+    await message.answer("Әкімші панелі:", reply_markup=admin_panel)
 
 
 @dp.callback_query(F.data == "show_support_users")
@@ -210,45 +214,11 @@ async def list_admins(callback: CallbackQuery):
     if callback.from_user.id not in authorized_admins:
         return await callback.answer("Рұқсат жоқ", show_alert=True)
 
-    text = "<b>Админдер тізімі:</b>\n" + "\n".join(str(admin_id) for admin_id in admins)
+    text = "<b>Әкімшілер тізімі:</b>\n" + "\n".join(str(admin_id) for admin_id in admins)
     await callback.message.answer(text)
     await callback.answer()
 
 
-# --- Ручное добавление/удаление админов ---
-@dp.message(Command("setadmin"))
-async def setadmin_cmd(message: Message):
-    if message.from_user.id != MAIN_ADMIN_ID:
-        return await message.answer("Сізде рұқсат жоқ.")
-
-    args = message.text.split()
-    if len(args) != 2 or not args[1].isdigit():
-        return await message.answer("Қолданылуы: /setadmin [user_id]")
-
-    new_admin = int(args[1])
-    admins.add(new_admin)
-    await message.answer(f"✅ {new_admin} енді админ.")
-
-
-@dp.message(Command("removeadmin"))
-async def removeadmin_cmd(message: Message):
-    if message.from_user.id != MAIN_ADMIN_ID:
-        return await message.answer("Сізде рұқсат жоқ.")
-
-    args = message.text.split()
-    if len(args) != 2 or not args[1].isdigit():
-        return await message.answer("Қолданылуы: /removeadmin [user_id]")
-
-    rem_admin = int(args[1])
-    if rem_admin == MAIN_ADMIN_ID:
-        return await message.answer("Басты админді өшіруге болмайды.")
-    admins.discard(rem_admin)
-    await message.answer(f"❌ {rem_admin} енді админ емес.")
-
-
-# --- Запуск ---
-async def main():
-    await dp.start_polling(bot)
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
+    asyncio.run(dp.start_polling(bot))
