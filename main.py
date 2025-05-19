@@ -36,7 +36,7 @@ main_menu = InlineKeyboardMarkup(inline_keyboard=[
 
 admin_panel = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Пользователи в поддержке", callback_data="show_support_users")],
-    [InlineKeyboardButton(text="Список админов", callback_data="list_admins")],
+    [InlineKeyboardButton(text="Админдар тізімі", callback_data="list_admins")],
 ])
 
 
@@ -49,7 +49,7 @@ async def cmd_start(message: Message):
 
 @dp.callback_query(F.data == "shop")
 async def shop_handler(callback: CallbackQuery):
-    await callback.message.answer("GOLD KAZAKHSTAN донат дүкені:\nhttps://example.com")
+    await callback.message.answer("GOLD KAZAKHSTAN донат дүкені:\nhttps://t.me/shopgoldkz")
     await callback.answer()
 
 
@@ -66,7 +66,7 @@ async def socials_handler(callback: CallbackQuery):
 @dp.callback_query(F.data == "support")
 async def support_handler(callback: CallbackQuery):
     user_in_support.add(callback.from_user.id)
-    await callback.message.answer("Сұрағыңызды жазыңыз. Админге жіберіледі.")
+    await callback.message.answer("Сұрағыңызды жазыңыз. Барлығы админге жіберіледі.")
     await callback.answer()
 
 
@@ -91,7 +91,7 @@ async def handle_user_message(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✉️ Жауап беру", callback_data=f"reply:{uid}")],
         [InlineKeyboardButton(
-            text=("❌ Снять админку" if uid in admins else "✅ Беру админку"),
+            text=("❌ Админды шешу" if uid in admins else "✅ Админды сайлау"),
             callback_data=f"toggleadmin:{uid}")],
         [InlineKeyboardButton(
             text=("♻️ Разбан" if uid in banned_users else "⛔ Бан"),
@@ -179,9 +179,9 @@ async def login_admin(message: Message):
 
     if args[1] == admin_password:
         authorized_admins.add(message.from_user.id)
-        await message.answer("✅ Авторизация сәтті өтті. /admin теріңіз.")
+        await message.answer("✅ Тіркелу сәтті өтті. /admin теріңіз.")
     else:
-        await message.answer("❌ Қате пароль.")
+        await message.answer("❌ Пароль қате.")
 
 
 # --- Админ-панель ---
